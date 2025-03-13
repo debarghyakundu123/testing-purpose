@@ -1,11 +1,9 @@
-import os
-import time
 import streamlit as st
+import speech_recognition as sr
 from dotenv import load_dotenv
 from groq import Groq
 from googlesearch import search
 from newspaper import Article
-from gtts import gTTS  # Import Text-to-Speech
 
 # Load API key
 API_KEY = "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"
@@ -70,16 +68,6 @@ def get_final_answer(query):
 
     return final_answer
 
-# === AI VOICE RESPONSE FUNCTION 🎙️ ===
-def speak_text(text):
-    """Convert AI response to speech and play it."""
-    try:
-        tts = gTTS(text=text, lang='en')  # Convert text to speech
-        tts.save("response.mp3")  # Save as an audio file
-        os.system("start response.mp3")  # Auto-play the response
-    except Exception as e:
-        st.error(f"❌ Voice output error: {e}")
-
 # === TYPING EFFECT FUNCTION ✍️ ===
 def type_effect(text):
     """Simulate a typing effect for AI responses."""
@@ -92,17 +80,18 @@ def type_effect(text):
         time.sleep(0.05)  # Adjust speed as needed
 
 # === STREAMLIT UI ===
-st.title("📰 AI-Powered Chat Assistant")
+st.title("📰 AI-Powered News Assistant")
 
 # User input section
 st.markdown("📝 **Ask something:**")
-user_input = st.text_input("🎤 Type your query here...")
+user_input = st.text_input("🔍 Type your query here...")
+
+
 
 # Get AI response
 if st.button("🤖 Get Answer"):
     if user_input:
         response = get_final_answer(user_input)
         type_effect(response)  # Typing animation
-        speak_text(response)  # AI speaks out the response
     else:
         st.warning("⚠️ Please enter a question.")
