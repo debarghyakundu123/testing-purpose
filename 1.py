@@ -1,3 +1,5 @@
+
+
 import os
 import time
 import streamlit as st
@@ -8,6 +10,7 @@ from googlesearch import search
 from newspaper import Article
 
 API_KEY = "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"
+
 
 # Initialize AI client
 client = Groq(api_key=API_KEY)
@@ -32,12 +35,14 @@ def fetch_news_articles(query, num_results=3):
     st.write("🔍 Searching for latest news...")
 
     try:
-        links = list(search(query, num_results=num_results))
+        links = list(search(query, num_results=num_results))  # FIXED HERE
     except Exception as e:
         st.error(f"❌ Google search error: {e}")
         return []
 
+
     articles = []
+    
     for link in links:
         try:
             article = Article(link)
@@ -83,39 +88,22 @@ if st.button("Get Answer"):
     else:
         st.warning("⚠️ Please enter a question.")
 
-# === SPEECH TO TEXT FUNCTION ===
-def speech_to_text():
-    """Convert speech to text using Google Speech Recognition."""
+# === VOICE INPUT ===
+st.subheader("🎙️ Ask with Voice")
+if st.button("Start Recording"):
     recognizer = sr.Recognizer()
-    
     with sr.Microphone() as source:
-        st.write("🎤 Speak something...")
-        recognizer.adjust_for_ambient_noise(source)  # Adjust for background noise
-        audio = recognizer.listen(source)  # Listen to input
-        
+        st.write("Listening...")
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.listen(source)
+
     try:
-        text = recognizer.recognize_google(audio)  # Convert speech to text
-        st.success(f"📝 Recognized: {text}")
-        return text
+        voice_text = recognizer.recognize_google(audio)
+        st.write(f"🎙️ Recognized: {voice_text}")
+        response = get_final_answer(voice_text)
+        st.success(response)
     except sr.UnknownValueError:
         st.error("⚠️ Could not understand the audio.")
-        return None
     except sr.RequestError:
-        st.error("❌ Could not connect to Google Speech Recognition service.")
-        return None
-
-# === STREAMLIT VOICE INPUT ===
-import sounddevice as sd
-import numpy as np
-import speech_recognition as sr
-
-def record_audio():
-    recognizer = sr.Recognizer()
-    
-    with sr.AudioFile("microphone_input.wav") as source:
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.record(source)
-    
-    return recognizer.recognize_google(audio)
-
-print(record_audio())
+        st.error("❌ Speech Recognition service unavailable.")
+#python -m streamlit run app.py
