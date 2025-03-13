@@ -1,16 +1,7 @@
-  
-
 speechrecognition
 streamlit
 newspaper3k
 googlesearch-python
 groq
 python-dotenv
-lxml_html_clean
 
-
-streamlit_webrtc
-
-numpy
-
-groq
