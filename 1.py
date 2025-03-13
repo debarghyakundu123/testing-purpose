@@ -105,10 +105,17 @@ def speech_to_text():
         return None
 
 # === STREAMLIT VOICE INPUT ===
-st.subheader("🎙️ Ask with Voice")
-if st.button("Start Recording"):
-    voice_text = speech_to_text()
-    if voice_text:
-        response = get_final_answer(voice_text)
-        st.write("💬 AI Response:")
-        st.success(response)
+import sounddevice as sd
+import numpy as np
+import speech_recognition as sr
+
+def record_audio():
+    recognizer = sr.Recognizer()
+    
+    with sr.AudioFile("microphone_input.wav") as source:
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.record(source)
+    
+    return recognizer.recognize_google(audio)
+
+print(record_audio())
