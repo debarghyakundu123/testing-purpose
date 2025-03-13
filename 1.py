@@ -30,15 +30,13 @@ def ask_groq(question):
 def fetch_news_articles(query, num_results=3):
     """Search Google and extract news articles."""
     st.write("🔍 Searching for latest news...")
-
     try:
-        links = list(search(query, num_results=num_results))  # FIXED HERE
+        links = list(search(query, num_results=num_results))
     except Exception as e:
         st.error(f"❌ Google search error: {e}")
         return []
 
     articles = []
-    
     for link in links:
         try:
             article = Article(link)
@@ -71,6 +69,16 @@ def get_final_answer(query):
 
     return final_answer
 
+# === TYPING EFFECT FUNCTION ✍️ ===
+def type_effect(text):
+    """Simulates a typing effect when displaying AI responses."""
+    typed_text = ""
+    for char in text:
+        typed_text += char
+        st.write(f"💬 AI Response: {typed_text}▌")
+        time.sleep(0.05)  # Adjust speed of typing effect
+        st.experimental_rerun()
+
 # === STREAMLIT UI ===
 st.title("📰 AI-Powered News Assistant")
 
@@ -79,7 +87,30 @@ user_input = st.text_input("Ask something:")
 if st.button("Get Answer"):
     if user_input:
         response = get_final_answer(user_input)
-        st.write("💬 AI Response:")
-        st.success(response)
+        type_effect(response)  # Use typing animation
     else:
         st.warning("⚠️ Please enter a question.")
+
+# === VOICE SEARCH 🎤 ===
+st.subheader("🎙️ Ask with Voice")
+def speech_to_text():
+    """Converts spoken words to text."""
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.info("🎙️ Speak now...")
+        try:
+            audio = recognizer.listen(source, timeout=5)
+            query = recognizer.recognize_google(audio)
+            st.success(f"✅ Recognized: {query}")
+            return query
+        except sr.UnknownValueError:
+            st.warning("⚠️ Could not understand audio. Try again.")
+        except sr.RequestError:
+            st.error("❌ Speech service unavailable.")
+    return None
+
+if st.button("🎤 Speak"):
+    spoken_query = speech_to_text()
+    if spoken_query:
+        response = get_final_answer(spoken_query)
+        type_effect(response)  # Use typing animation
