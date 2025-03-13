@@ -1,16 +1,15 @@
+
 import os
 import time
 import streamlit as st
 import speech_recognition as sr
-import sounddevice as sd
-import numpy as np
-import scipy.io.wavfile as wav
 from dotenv import load_dotenv
 from groq import Groq
 from googlesearch import search
 from newspaper import Article
 
 API_KEY = "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"
+
 
 # Initialize AI client
 client = Groq(api_key=API_KEY)
@@ -35,12 +34,14 @@ def fetch_news_articles(query, num_results=3):
     st.write("🔍 Searching for latest news...")
 
     try:
-        links = list(search(query, num_results=num_results))
+        links = list(search(query, num_results=num_results))  # FIXED HERE
     except Exception as e:
         st.error(f"❌ Google search error: {e}")
         return []
 
+
     articles = []
+    
     for link in links:
         try:
             article = Article(link)
@@ -86,25 +87,14 @@ if st.button("Get Answer"):
     else:
         st.warning("⚠️ Please enter a question.")
 
-# === MICROPHONE RECORDING (WITHOUT PYAUDIO) ===
-st.subheader("🎙️ Live Voice Input")
-
-def record_audio(duration=5, fs=44100):
-    """Records audio using sounddevice and saves it as a .wav file."""
-    st.write("🎤 Recording...")
-    audio_data = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype=np.int16)
-    sd.wait()  # Wait until recording is finished
-    wav.write("temp_audio.wav", fs, audio_data)
-    st.success("✅ Recording complete!")
-
+# === VOICE INPUT ===
+st.subheader("🎙️ Ask with Voice")
 if st.button("Start Recording"):
-    record_audio()  # Record and save as 'temp_audio.wav'
-
-    # Recognize speech
     recognizer = sr.Recognizer()
-    with sr.AudioFile("temp_audio.wav") as source:
-        st.write("🔄 Processing audio...")
-        audio = recognizer.record(source)
+    with sr.Microphone() as source:
+        st.write("Listening...")
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.listen(source)
 
     try:
         voice_text = recognizer.recognize_google(audio)
@@ -115,3 +105,4 @@ if st.button("Start Recording"):
         st.error("⚠️ Could not understand the audio.")
     except sr.RequestError:
         st.error("❌ Speech Recognition service unavailable.")
+#python -m streamlit run app.py
