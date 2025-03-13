@@ -5,6 +5,10 @@ from dotenv import load_dotenv
 from groq import Groq
 from googlesearch import search
 from newspaper import Article
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, ClientSettings
+import speech_recognition as sr
+import numpy as np
+import av
 
 API_KEY = "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"
 
@@ -82,10 +86,10 @@ if st.button("Get Answer"):
     else:
         st.warning("⚠️ Please enter a question.")
 
-# === MICROPHONE PERMISSION REQUEST ===
+# === MICROPHONE PERMISSION REQUEST & AUDIO RECORDING ===
 st.subheader("🎙️ Ask with Voice")
 
-# JavaScript to request microphone permission
+# Request permission using JavaScript
 mic_permission_js = """
 <script>
 async function requestMicPermission() {
@@ -102,3 +106,33 @@ async function requestMicPermission() {
 """
 
 st.components.v1.html(mic_permission_js, height=100)
+
+# === STREAMLIT WEBRTC FOR AUDIO INPUT ===
+st.write("🎤 Click 'Start' to record your voice and convert it to text:")
+
+webrtc_ctx = webrtc_streamer(
+    key="speech-to-text",
+    mode=WebRtcMode.SENDRECV,
+    client_settings=ClientSettings(
+        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+        media_stream_constraints={"video": False, "audio": True},
+    ),
+)
+
+if webrtc_ctx.audio_receiver:
+    recognizer = sr.Recognizer()
+    audio_frames = webrtc_ctx.audio_receiver.get_frames(timeout=1)
+
+    for frame in audio_frames:
+        sound = np.frombuffer(frame.to_ndarray(), dtype=np.int16)
+        audio_data = sr.AudioData(sound.tobytes(), frame.sample_rate, 2)
+
+        try:
+            voice_text = recognizer.recognize_google(audio_data)
+            st.write(f"🎙️ Recognized: {voice_text}")
+            response = get_final_answer(voice_text)
+            st.success(response)
+        except sr.UnknownValueError:
+            st.error("⚠️ Could not understand the audio.")
+        except sr.RequestError:
+            st.error("❌ Speech Recognition service unavailable.")
