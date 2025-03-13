@@ -7,7 +7,7 @@ from groq import Groq
 from googlesearch import search
 from newspaper import Article
 
-
+# Load API key
 API_KEY = "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"
 
 # Initialize AI client
@@ -71,7 +71,6 @@ def get_final_answer(query):
     return final_answer
 
 # === TYPING EFFECT FUNCTION ✍️ ===
-
 def type_effect(text):
     """Simulate a typing effect for AI responses."""
     output = st.empty()  # Creates a placeholder for dynamic updates
@@ -79,20 +78,36 @@ def type_effect(text):
 
     for char in text:
         typed_text += char
-        output.write(typed_text)  # Update the displayed text
+        output.markdown(f"🖥️ **AI Response:** {typed_text}")  # Update the displayed text
         time.sleep(0.05)  # Adjust speed as needed
-
 
 # === STREAMLIT UI ===
 st.title("📰 AI-Powered News Assistant")
 
-user_input = st.text_input("Ask something:")
+# User input section
+st.markdown("📝 **Ask something:**")
+user_input = st.text_input("🔍 Type your query here...")
 
-if st.button("Get Answer"):
+# Voice input button
+recognizer = sr.Recognizer()
+
+if st.button("🎙️ Speak Your Question"):
+    with sr.Microphone() as source:
+        st.write("🎤 Listening...")
+        try:
+            audio = recognizer.listen(source)
+            user_input = recognizer.recognize_google(audio)
+            st.success(f"🗣️ You said: {user_input}")
+        except sr.UnknownValueError:
+            st.warning("⚠️ Couldn't recognize speech. Please try again.")
+        except sr.RequestError:
+            st.error("❌ Speech service error. Try again later.")
+
+# Get AI response
+if st.button("🤖 Get Answer"):
     if user_input:
         response = get_final_answer(user_input)
-        type_effect(response)  # Use typing animation
+        type_effect(response)  # Typing animation
     else:
         st.warning("⚠️ Please enter a question.")
 
-# === VOICE SEARCH 🎤 ===
