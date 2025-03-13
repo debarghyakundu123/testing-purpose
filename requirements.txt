@@ -5,3 +5,4 @@ googlesearch-python
 groq
 python-dotenv
 
+pydub
