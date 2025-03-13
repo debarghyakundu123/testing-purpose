@@ -1,3 +1,5 @@
+
+
 import os
 import time
 import streamlit as st
@@ -9,66 +11,99 @@ from newspaper import Article
 
 API_KEY = "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"
 
+
 # Initialize AI client
 client = Groq(api_key=API_KEY)
 
-# === 1️⃣ VOICE INPUT FUNCTION ===
-def record_voice():
-    """Records voice and returns audio data."""
-    recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.write("🎤 Listening... Speak now!")
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.listen(source)
-    return audio
-
-# === 2️⃣ AUDIO TO TEXT FUNCTION ===
-def voice_to_text(audio):
-    """Converts recorded audio to text."""
-    recognizer = sr.Recognizer()
-    try:
-        text = recognizer.recognize_google(audio)
-        st.success(f"✅ Recognized: {text}")
-        return text
-    except sr.UnknownValueError:
-        st.error("⚠️ Could not understand the audio.")
-        return None
-    except sr.RequestError:
-        st.error("❌ Speech Recognition service unavailable.")
-        return None
-
-# === 3️⃣ PROCESS QUERY TO AI ===
-def process_query(query):
-    """Sends query to AI and returns answer."""
+# === AI RESPONSE FUNCTION ===
+def ask_groq(question):
+    """Ask AI for an answer."""
     try:
         response = client.chat.completions.create(
-            messages=[{"role": "user", "content": query}],
+            messages=[{"role": "user", "content": question}],
             model="llama-3.3-70b-versatile",
             stream=False,
         )
         return response.choices[0].message.content
     except Exception as e:
-        st.error(f"❌ AI Error: {e}")
+        st.error(f"❌ Error querying AI: {e}")
         return "AI is currently unavailable. Please try again later."
 
-# === STREAMLIT UI ===
-st.title("🗣️ AI-Powered Voice Assistant")
+# === NEWS FETCHING FUNCTION ===
+def fetch_news_articles(query, num_results=3):
+    """Search Google and extract news articles."""
+    st.write("🔍 Searching for latest news...")
 
-# Text Input Query
-user_input = st.text_input("Type your question:")
+    try:
+        links = list(search(query, num_results=num_results))  # FIXED HERE
+    except Exception as e:
+        st.error(f"❌ Google search error: {e}")
+        return []
+
+
+    articles = []
+    
+    for link in links:
+        try:
+            article = Article(link)
+            article.download()
+            article.parse()
+            articles.append(article.text)
+            st.success(f"✅ Retrieved article from: {link}")
+            time.sleep(2)  # Prevent rate limits
+        except Exception as e:
+            st.warning(f"❌ Failed to fetch {link}: {e}")
+    
+    return articles
+
+# === AI + NEWS PROCESSING FUNCTION ===
+def get_final_answer(query):
+    """Get AI response or fetch news if AI lacks real-time info."""
+    ai_answer = ask_groq(query)
+
+    if "do not have information" in ai_answer.lower() or "knowledge cutoff" in ai_answer.lower():
+        st.warning("⚠️ AI lacks real-time info. Fetching latest news...")
+        articles = fetch_news_articles(query)
+        
+        if articles:
+            news_summary = " ".join(articles[:2])  # Take first 2 articles
+            final_answer = ask_groq(f"Summarize and answer this question based on the latest news: {query}\n\n{news_summary}")
+        else:
+            final_answer = "❌ No valid articles found. Please try again later."
+    else:
+        final_answer = ai_answer
+
+    return final_answer
+
+# === STREAMLIT UI ===
+st.title("📰 AI-Powered News Assistant")
+
+user_input = st.text_input("Ask something:")
 
 if st.button("Get Answer"):
     if user_input:
-        response = process_query(user_input)
-        st.success(f"🤖 AI Response:\n\n{response}")
+        response = get_final_answer(user_input)
+        st.write("💬 AI Response:")
+        st.success(response)
     else:
         st.warning("⚠️ Please enter a question.")
 
-# Voice Input Section
-st.subheader("🎙️ Use Voice Input")
+# === VOICE INPUT ===
+st.subheader("🎙️ Ask with Voice")
 if st.button("Start Recording"):
-    audio = record_voice()
-    text = voice_to_text(audio)
-    if text:
-        response = process_query(text)
-        st.success(f"🤖 AI Response:\n\n{response}")
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.write("Listening...")
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.listen(source)
+
+    try:
+        voice_text = recognizer.recognize_google(audio)
+        st.write(f"🎙️ Recognized: {voice_text}")
+        response = get_final_answer(voice_text)
+        st.success(response)
+    except sr.UnknownValueError:
+        st.error("⚠️ Could not understand the audio.")
+    except sr.RequestError:
+        st.error("❌ Speech Recognition service unavailable.")
+#python -m streamlit run app.py
