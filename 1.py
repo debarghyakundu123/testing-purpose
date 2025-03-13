@@ -96,25 +96,3 @@ if st.button("Get Answer"):
         st.warning("⚠️ Please enter a question.")
 
 # === VOICE SEARCH 🎤 ===
-st.subheader("🎙️ Ask with Voice")
-def speech_to_text():
-    """Converts spoken words to text."""
-    recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.info("🎙️ Speak now...")
-        try:
-            audio = recognizer.listen(source, timeout=5)
-            query = recognizer.recognize_google(audio)
-            st.success(f"✅ Recognized: {query}")
-            return query
-        except sr.UnknownValueError:
-            st.warning("⚠️ Could not understand audio. Try again.")
-        except sr.RequestError:
-            st.error("❌ Speech service unavailable.")
-    return None
-
-if st.button("🎤 Speak"):
-    spoken_query = speech_to_text()
-    if spoken_query:
-        response = get_final_answer(spoken_query)
-        type_effect(response)  # Use typing animation
