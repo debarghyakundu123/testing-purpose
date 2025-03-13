@@ -1,0 +1,6 @@
+speechrecognition
+streamlit
+newspaper3k
+googlesearch-python
+groq
+python-dotenv
