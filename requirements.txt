@@ -4,5 +4,6 @@ newspaper3k
 googlesearch-python
 groq
 python-dotenv
+vosk
+ sounddevice
 
-pydub
