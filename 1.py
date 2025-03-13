@@ -1,5 +1,3 @@
-
-
 import os
 import time
 import streamlit as st
@@ -8,9 +6,11 @@ from dotenv import load_dotenv
 from groq import Groq
 from googlesearch import search
 from newspaper import Article
+from pydub import AudioSegment  # Converts audio files for compatibility
+import io
 
+# API Key for AI Client
 API_KEY = "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"
-
 
 # Initialize AI client
 client = Groq(api_key=API_KEY)
@@ -35,14 +35,12 @@ def fetch_news_articles(query, num_results=3):
     st.write("🔍 Searching for latest news...")
 
     try:
-        links = list(search(query, num_results=num_results))  # FIXED HERE
+        links = list(search(query, num_results=num_results))
     except Exception as e:
         st.error(f"❌ Google search error: {e}")
         return []
 
-
     articles = []
-    
     for link in links:
         try:
             article = Article(link)
@@ -75,6 +73,34 @@ def get_final_answer(query):
 
     return final_answer
 
+# === AUDIO PROCESSING FUNCTION ===
+def process_audio(audio_file):
+    """Convert audio file to text using SpeechRecognition."""
+    recognizer = sr.Recognizer()
+    
+    try:
+        # Convert audio file to WAV format if needed
+        audio_bytes = audio_file.read()
+        audio = AudioSegment.from_file(io.BytesIO(audio_bytes))
+        audio = audio.set_frame_rate(16000).set_channels(1)
+        
+        # Save as a temporary WAV file
+        temp_audio_path = "temp_audio.wav"
+        audio.export(temp_audio_path, format="wav")
+
+        # Recognize speech
+        with sr.AudioFile(temp_audio_path) as source:
+            audio_data = recognizer.record(source)
+            voice_text = recognizer.recognize_google(audio_data)
+
+        return voice_text
+    except sr.UnknownValueError:
+        return "⚠️ Could not understand the audio."
+    except sr.RequestError:
+        return "❌ Speech Recognition service unavailable."
+    except Exception as e:
+        return f"❌ Error processing audio: {e}"
+
 # === STREAMLIT UI ===
 st.title("📰 AI-Powered News Assistant")
 
@@ -88,22 +114,17 @@ if st.button("Get Answer"):
     else:
         st.warning("⚠️ Please enter a question.")
 
-# === VOICE INPUT ===
-st.subheader("🎙️ Ask with Voice")
-if st.button("Start Recording"):
-    recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.write("Listening...")
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.listen(source)
+# === VOICE INPUT WITH FILE UPLOAD ===
+st.subheader("🎙️ Ask with Voice (Upload Audio)")
+uploaded_audio = st.file_uploader("Upload an audio file (.wav, .mp3)", type=["wav", "mp3"])
 
-    try:
-        voice_text = recognizer.recognize_google(audio)
-        st.write(f"🎙️ Recognized: {voice_text}")
-        response = get_final_answer(voice_text)
+if uploaded_audio:
+    st.write("📢 Processing audio...")
+    recognized_text = process_audio(uploaded_audio)
+    
+    if recognized_text:
+        st.write(f"🎙️ Recognized: {recognized_text}")
+        response = get_final_answer(recognized_text)
         st.success(response)
-    except sr.UnknownValueError:
-        st.error("⚠️ Could not understand the audio.")
-    except sr.RequestError:
-        st.error("❌ Speech Recognition service unavailable.")
-#python -m streamlit run app.py
+    else:
+        st.error("⚠️ Could not extract text from audio.")
