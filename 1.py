@@ -7,6 +7,7 @@ from groq import Groq
 from googlesearch import search
 from newspaper import Article
 
+
 API_KEY = "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"
 
 # Initialize AI client
@@ -70,14 +71,17 @@ def get_final_answer(query):
     return final_answer
 
 # === TYPING EFFECT FUNCTION ✍️ ===
+
 def type_effect(text):
-    """Simulates a typing effect when displaying AI responses."""
+    """Simulate a typing effect for AI responses."""
+    output = st.empty()  # Creates a placeholder for dynamic updates
     typed_text = ""
+
     for char in text:
         typed_text += char
-        st.write(f"💬 AI Response: {typed_text}▌")
-        time.sleep(0.05)  # Adjust speed of typing effect
-        st.experimental_rerun()
+        output.write(typed_text)  # Update the displayed text
+        time.sleep(0.05)  # Adjust speed as needed
+
 
 # === STREAMLIT UI ===
 st.title("📰 AI-Powered News Assistant")
