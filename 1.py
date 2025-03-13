@@ -9,6 +9,11 @@ from groq import Groq
 from googlesearch import search
 from newspaper import Article
 
+import sounddevice as sd
+import numpy as np
+import scipy.io.wavfile as wav
+
+
 API_KEY = "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"
 
 
@@ -92,18 +97,29 @@ if st.button("Get Answer"):
 st.subheader("🎙️ Ask with Voice")
 if st.button("Start Recording"):
     recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.write("Listening...")
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.listen(source)
-
+    
+    # Record audio using sounddevice
+    duration = 5  # Record for 5 seconds
+    samplerate = 44100  # Sample rate
+    st.write("🎤 Listening...")
+    
     try:
+        audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype="int16")
+        sd.wait()  # Wait for recording to finish
+        
+        # Save audio as WAV file
+        wav.write("temp_audio.wav", samplerate, audio_data)
+        
+        # Use SpeechRecognition to process the WAV file
+        with sr.AudioFile("temp_audio.wav") as source:
+            audio = recognizer.record(source)
+        
+        # Recognize speech
         voice_text = recognizer.recognize_google(audio)
         st.write(f"🎙️ Recognized: {voice_text}")
         response = get_final_answer(voice_text)
         st.success(response)
-    except sr.UnknownValueError:
-        st.error("⚠️ Could not understand the audio.")
-    except sr.RequestError:
-        st.error("❌ Speech Recognition service unavailable.")
-#python -m streamlit run app.py
+
+    except Exception as e:
+        st.error(f"❌ Error capturing voice: {e}")
+
