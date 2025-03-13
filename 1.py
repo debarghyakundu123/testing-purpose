@@ -80,7 +80,7 @@ def type_effect(text):
         time.sleep(0.05)  # Adjust speed as needed
 
 # === STREAMLIT UI ===
-st.title("📰 AI-Powered News Assistant")
+st.title("AskMe AI: Your Smart Chat")
 
 # User input section
 st.markdown("📝 **Ask something:**")
