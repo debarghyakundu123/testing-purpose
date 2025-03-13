@@ -31,12 +31,13 @@ def ask_groq(question):
 def fetch_news_articles(query, num_results=3):
     """Search Google and extract news articles."""
     st.write("🔍 Searching for latest news...")
-    
+
     try:
-        links = list(search(query, stop=num_results))
+        links = list(search(query, num_results=num_results))  # FIXED HERE
     except Exception as e:
         st.error(f"❌ Google search error: {e}")
         return []
+
 
     articles = []
     
