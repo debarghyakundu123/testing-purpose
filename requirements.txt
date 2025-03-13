@@ -1,3 +1,5 @@
+ PortAudio 
+
 speechrecognition
 streamlit
 newspaper3k
