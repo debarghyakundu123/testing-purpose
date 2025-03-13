@@ -89,7 +89,24 @@ if st.button("Get Answer"):
         st.warning("⚠️ Please enter a question.")
 
 # === VOICE INPUT ===
-st.subheader("🎙️ Ask with Voice")
+import requests
+
+GROQ_API_KEY = "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"
+
+def transcribe_with_groq(audio_data):
+    """Send recorded audio to Groq Whisper API for transcription."""
+    with open("temp_audio.wav", "wb") as f:
+        f.write(audio_data.get_wav_data())  # Save the audio file
+
+    url = "https://api.groq.com/audio/transcribe"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+    files = {"file": open("temp_audio.wav", "rb")}
+
+    response = requests.post(url, headers=headers, files=files)
+    response_json = response.json()
+
+    return response_json.get("text", "❌ Error transcribing audio.")
+
 if st.button("Start Recording"):
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
@@ -98,12 +115,11 @@ if st.button("Start Recording"):
         audio = recognizer.listen(source)
 
     try:
-        voice_text = recognizer.recognize_google(audio)
+        st.write("Transcribing with Groq Whisper API...")
+        voice_text = transcribe_with_groq(audio)
         st.write(f"🎙️ Recognized: {voice_text}")
+
         response = get_final_answer(voice_text)
         st.success(response)
-    except sr.UnknownValueError:
-        st.error("⚠️ Could not understand the audio.")
-    except sr.RequestError:
-        st.error("❌ Speech Recognition service unavailable.")
-#python -m streamlit run app.py
+    except Exception as e:
+        st.error(f"❌ Error in transcription: {e}")
