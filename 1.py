@@ -1,15 +1,18 @@
+
+
 import os
 import time
 import streamlit as st
 import speech_recognition as sr
-import requests
 from dotenv import load_dotenv
 from groq import Groq
 from googlesearch import search
 from newspaper import Article
 
-# Load API Key
 API_KEY = "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"
+
+
+# Initialize AI client
 client = Groq(api_key=API_KEY)
 
 # === AI RESPONSE FUNCTION ===
@@ -32,12 +35,14 @@ def fetch_news_articles(query, num_results=3):
     st.write("🔍 Searching for latest news...")
 
     try:
-        links = list(search(query, num_results=num_results))
+        links = list(search(query, num_results=num_results))  # FIXED HERE
     except Exception as e:
         st.error(f"❌ Google search error: {e}")
         return []
 
+
     articles = []
+    
     for link in links:
         try:
             article = Article(link)
@@ -83,40 +88,22 @@ if st.button("Get Answer"):
     else:
         st.warning("⚠️ Please enter a question.")
 
-# === VOICE INPUT WITH GROQ API ===
-def transcribe_with_groq(audio_path):
-    """Send recorded audio to Groq Whisper API for transcription."""
-    url = "https://api.groq.com/audio/transcribe"
-    headers = {"Authorization": f"Bearer {API_KEY}"}
-    files = {"file": open(audio_path, "rb")}
-
-    try:
-        response = requests.post(url, headers=headers, files=files)
-        response_json = response.json()
-        return response_json.get("text", "❌ Error transcribing audio.")
-    except Exception as e:
-        return f"❌ API Error: {e}"
-    finally:
-        files["file"].close()  # Ensure file is closed
-
-# === RECORD AUDIO AND TRANSCRIBE ===
+# === VOICE INPUT ===
+st.subheader("🎙️ Ask with Voice")
 if st.button("Start Recording"):
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
-        st.write("🎙️ Listening...")
+        st.write("Listening...")
         recognizer.adjust_for_ambient_noise(source)
         audio = recognizer.listen(source)
 
-    audio_path = "temp_audio.wav"
-    with open(audio_path, "wb") as f:
-        f.write(audio.get_wav_data())
-
-    st.write("🛠️ Transcribing with Groq Whisper API...")
-    transcription = transcribe_with_groq(audio_path)
-
-    if transcription and "Error" not in transcription:
-        st.write(f"🎙️ Recognized: {transcription}")
-        response = get_final_answer(transcription)
+    try:
+        voice_text = recognizer.recognize_google(audio)
+        st.write(f"🎙️ Recognized: {voice_text}")
+        response = get_final_answer(voice_text)
         st.success(response)
-    else:
-        st.error(transcription)
+    except sr.UnknownValueError:
+        st.error("⚠️ Could not understand the audio.")
+    except sr.RequestError:
+        st.error("❌ Speech Recognition service unavailable.")
+#python -m streamlit run app.py
