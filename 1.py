@@ -1,11 +1,18 @@
 import streamlit as st
 import numpy as np
+import asyncio
 import speech_recognition as sr
 import av
 from streamlit_webrtc import webrtc_streamer, WebRtcMode
 from googlesearch import search
 from newspaper import Article
 from groq import Groq
+
+# ✅ Ensure the event loop works correctly
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
 
 # ✅ AI API Key
 API_KEY = "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"
@@ -97,12 +104,13 @@ def audio_callback(frame):
     except sr.RequestError:
         st.session_state["recognized_text"] = "❌ Speech Recognition service unavailable."
 
-webrtc_ctx = webrtc_streamer(
-    key="speech-to-text",
-    mode=WebRtcMode.SENDONLY,
-    audio_frame_callback=audio_callback,
-    media_stream_constraints={"audio": True, "video": False},
-)
+if st.button("Start Voice Input"):
+    webrtc_ctx = webrtc_streamer(
+        key="speech-to-text",
+        mode=WebRtcMode.SENDONLY,
+        audio_frame_callback=audio_callback,
+        media_stream_constraints={"audio": True, "video": False},
+    )
 
 # === DISPLAY PERSISTENT TEXT ===
 if "recognized_text" in st.session_state and st.session_state["recognized_text"]:
