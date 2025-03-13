@@ -1,21 +1,18 @@
+
+
+import os
+import time
 import streamlit as st
-import numpy as np
-import asyncio
 import speech_recognition as sr
-import av
-from streamlit_webrtc import webrtc_streamer, WebRtcMode
+from dotenv import load_dotenv
+from groq import Groq
 from googlesearch import search
 from newspaper import Article
-from groq import Groq
 
-# ✅ Ensure the event loop works correctly
-try:
-    asyncio.get_running_loop()
-except RuntimeError:
-    asyncio.set_event_loop(asyncio.new_event_loop())
-
-# ✅ AI API Key
 API_KEY = "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"
+
+
+# Initialize AI client
 client = Groq(api_key=API_KEY)
 
 # === AI RESPONSE FUNCTION ===
@@ -29,26 +26,34 @@ def ask_groq(question):
         )
         return response.choices[0].message.content
     except Exception as e:
-        return f"❌ AI Error: {e}"
+        st.error(f"❌ Error querying AI: {e}")
+        return "AI is currently unavailable. Please try again later."
 
 # === NEWS FETCHING FUNCTION ===
 def fetch_news_articles(query, num_results=3):
     """Search Google and extract news articles."""
+    st.write("🔍 Searching for latest news...")
+
     try:
-        links = list(search(query, num_results=num_results))
+        links = list(search(query, num_results=num_results))  # FIXED HERE
     except Exception as e:
-        return [f"❌ Google search error: {e}"]
+        st.error(f"❌ Google search error: {e}")
+        return []
+
 
     articles = []
+    
     for link in links:
         try:
             article = Article(link)
             article.download()
             article.parse()
-            articles.append(article.text[:1000])  # Limit to 1000 chars
-        except:
-            pass
-
+            articles.append(article.text)
+            st.success(f"✅ Retrieved article from: {link}")
+            time.sleep(2)  # Prevent rate limits
+        except Exception as e:
+            st.warning(f"❌ Failed to fetch {link}: {e}")
+    
     return articles
 
 # === AI + NEWS PROCESSING FUNCTION ===
@@ -57,12 +62,14 @@ def get_final_answer(query):
     ai_answer = ask_groq(query)
 
     if "do not have information" in ai_answer.lower() or "knowledge cutoff" in ai_answer.lower():
+        st.warning("⚠️ AI lacks real-time info. Fetching latest news...")
         articles = fetch_news_articles(query)
+        
         if articles:
             news_summary = " ".join(articles[:2])  # Take first 2 articles
-            final_answer = ask_groq(f"Summarize this news: {query}\n\n{news_summary}")
+            final_answer = ask_groq(f"Summarize and answer this question based on the latest news: {query}\n\n{news_summary}")
         else:
-            final_answer = "❌ No valid articles found."
+            final_answer = "❌ No valid articles found. Please try again later."
     else:
         final_answer = ai_answer
 
@@ -71,8 +78,8 @@ def get_final_answer(query):
 # === STREAMLIT UI ===
 st.title("📰 AI-Powered News Assistant")
 
-# === Text Input ===
-user_input = st.text_input("🔍 Ask something:")
+user_input = st.text_input("Ask something:")
+
 if st.button("Get Answer"):
     if user_input:
         response = get_final_answer(user_input)
@@ -81,41 +88,22 @@ if st.button("Get Answer"):
     else:
         st.warning("⚠️ Please enter a question.")
 
-# === MICROPHONE INPUT ===
+# === VOICE INPUT ===
 st.subheader("🎙️ Ask with Voice")
+if st.button("Start Recording"):
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.write("Listening...")
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.listen(source)
 
-recognizer = sr.Recognizer()
-
-def audio_callback(frame):
-    """Processes audio from WebRTC and converts it to text."""
-    audio_data = np.frombuffer(frame.to_ndarray(), dtype=np.int16)
-    
-    # Convert NumPy array into AudioData format
-    audio_sample_rate = 16000
-    audio_bytes = audio_data.tobytes()
-
-    audio_source = sr.AudioData(audio_bytes, sample_rate=audio_sample_rate, sample_width=2)
-    
     try:
-        text = recognizer.recognize_google(audio_source)
-        st.session_state["recognized_text"] = text  # Store the text so it persists
+        voice_text = recognizer.recognize_google(audio)
+        st.write(f"🎙️ Recognized: {voice_text}")
+        response = get_final_answer(voice_text)
+        st.success(response)
     except sr.UnknownValueError:
-        st.session_state["recognized_text"] = "⚠️ Could not understand the audio."
+        st.error("⚠️ Could not understand the audio.")
     except sr.RequestError:
-        st.session_state["recognized_text"] = "❌ Speech Recognition service unavailable."
-
-if st.button("Start Voice Input"):
-    webrtc_ctx = webrtc_streamer(
-        key="speech-to-text",
-        mode=WebRtcMode.SENDONLY,
-        audio_frame_callback=audio_callback,
-        media_stream_constraints={"audio": True, "video": False},
-    )
-
-# === DISPLAY PERSISTENT TEXT ===
-if "recognized_text" in st.session_state and st.session_state["recognized_text"]:
-    st.write(f"🎙️ Recognized: {st.session_state['recognized_text']}")
-    
-    # Process the voice input with AI
-    response = get_final_answer(st.session_state["recognized_text"])
-    st.success(response)
+        st.error("❌ Speech Recognition service unavailable.")
+#python -m streamlit run app.py
