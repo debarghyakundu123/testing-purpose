@@ -1,15 +1,12 @@
-import os
-import time
 import streamlit as st
 import speech_recognition as sr
-import sounddevice as sd
-import numpy as np
-import scipy.io.wavfile as wav
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
+import av
 from googlesearch import search
 from newspaper import Article
 from groq import Groq
 
-# ✅ API Key for AI Model
+# ✅ AI API Key
 API_KEY = "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"
 client = Groq(api_key=API_KEY)
 
@@ -44,7 +41,6 @@ def fetch_news_articles(query, num_results=3):
             article.parse()
             articles.append(article.text[:1000])  # Limit to 1000 chars
             st.success(f"✅ Found: {link}")
-            time.sleep(2)  # Prevent rate limits
         except:
             pass
 
@@ -81,32 +77,31 @@ if st.button("Get Answer"):
     else:
         st.warning("⚠️ Please enter a question.")
 
-# === MICROPHONE RECORDING (WITHOUT PYAUDIO) ===
+# === MICROPHONE INPUT USING STREAMLIT_WEBRTC ===
 st.subheader("🎙️ Ask with Voice")
 
-def record_audio(duration=5, fs=44100):
-    """Records audio using sounddevice and saves it as a .wav file."""
-    st.write("🎤 Recording...")
-    audio_data = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype=np.int16)
-    sd.wait()  # Wait until recording is finished
-    wav.write("temp_audio.wav", fs, audio_data)
-    st.success("✅ Recording complete!")
+recognizer = sr.Recognizer()
 
-if st.button("🎙️ Start Recording"):
-    record_audio()  # Record and save as 'temp_audio.wav'
+def audio_callback(frame):
+    """Processes audio from WebRTC and converts it to text."""
+    audio = np.frombuffer(frame.to_ndarray(), dtype=np.int16)
+    with sr.AudioData(audio.tobytes(), sample_rate=16000, sample_width=2) as source:
+        try:
+            text = recognizer.recognize_google(source)
+            st.session_state["recognized_text"] = text
+        except sr.UnknownValueError:
+            st.session_state["recognized_text"] = "⚠️ Could not understand the audio."
+        except sr.RequestError:
+            st.session_state["recognized_text"] = "❌ Speech Recognition service unavailable."
 
-    # Recognize speech
-    recognizer = sr.Recognizer()
-    with sr.AudioFile("temp_audio.wav") as source:
-        st.write("🔄 Processing audio...")
-        audio = recognizer.record(source)
+webrtc_ctx = webrtc_streamer(
+    key="speech-to-text",
+    mode=WebRtcMode.SENDONLY,
+    audio_frame_callback=audio_callback,
+    media_stream_constraints={"audio": True, "video": False},
+)
 
-    try:
-        voice_text = recognizer.recognize_google(audio)
-        st.write(f"🎙️ Recognized: {voice_text}")
-        response = get_final_answer(voice_text)
-        st.success(response)
-    except sr.UnknownValueError:
-        st.error("⚠️ Could not understand the audio.")
-    except sr.RequestError:
-        st.error("❌ Speech Recognition service unavailable.")
+if "recognized_text" in st.session_state:
+    st.write(f"🎙️ Recognized: {st.session_state['recognized_text']}")
+    response = get_final_answer(st.session_state["recognized_text"])
+    st.success(response)
