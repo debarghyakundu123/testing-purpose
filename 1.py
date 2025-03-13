@@ -88,20 +88,7 @@ st.title("📰 AI-Powered News Assistant")
 st.markdown("📝 **Ask something:**")
 user_input = st.text_input("🔍 Type your query here...")
 
-# Voice input button
-recognizer = sr.Recognizer()
 
-if st.button("🎙️ Speak Your Question"):
-    with sr.Microphone() as source:
-        st.write("🎤 Listening...")
-        try:
-            audio = recognizer.listen(source)
-            user_input = recognizer.recognize_google(audio)
-            st.success(f"🗣️ You said: {user_input}")
-        except sr.UnknownValueError:
-            st.warning("⚠️ Couldn't recognize speech. Please try again.")
-        except sr.RequestError:
-            st.error("❌ Speech service error. Try again later.")
 
 # Get AI response
 if st.button("🤖 Get Answer"):
