@@ -1,18 +1,15 @@
-
-
 import os
 import time
 import streamlit as st
 import speech_recognition as sr
+import requests
 from dotenv import load_dotenv
 from groq import Groq
 from googlesearch import search
 from newspaper import Article
 
+# Load API Key
 API_KEY = "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"
-
-
-# Initialize AI client
 client = Groq(api_key=API_KEY)
 
 # === AI RESPONSE FUNCTION ===
@@ -35,14 +32,12 @@ def fetch_news_articles(query, num_results=3):
     st.write("🔍 Searching for latest news...")
 
     try:
-        links = list(search(query, num_results=num_results))  # FIXED HERE
+        links = list(search(query, num_results=num_results))
     except Exception as e:
         st.error(f"❌ Google search error: {e}")
         return []
 
-
     articles = []
-    
     for link in links:
         try:
             article = Article(link)
@@ -88,38 +83,40 @@ if st.button("Get Answer"):
     else:
         st.warning("⚠️ Please enter a question.")
 
-# === VOICE INPUT ===
-import requests
-
-GROQ_API_KEY = "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"
-
-def transcribe_with_groq(audio_data):
+# === VOICE INPUT WITH GROQ API ===
+def transcribe_with_groq(audio_path):
     """Send recorded audio to Groq Whisper API for transcription."""
-    with open("temp_audio.wav", "wb") as f:
-        f.write(audio_data.get_wav_data())  # Save the audio file
-
     url = "https://api.groq.com/audio/transcribe"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-    files = {"file": open("temp_audio.wav", "rb")}
+    headers = {"Authorization": f"Bearer {API_KEY}"}
+    files = {"file": open(audio_path, "rb")}
 
-    response = requests.post(url, headers=headers, files=files)
-    response_json = response.json()
+    try:
+        response = requests.post(url, headers=headers, files=files)
+        response_json = response.json()
+        return response_json.get("text", "❌ Error transcribing audio.")
+    except Exception as e:
+        return f"❌ API Error: {e}"
+    finally:
+        files["file"].close()  # Ensure file is closed
 
-    return response_json.get("text", "❌ Error transcribing audio.")
-
+# === RECORD AUDIO AND TRANSCRIBE ===
 if st.button("Start Recording"):
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
-        st.write("Listening...")
+        st.write("🎙️ Listening...")
         recognizer.adjust_for_ambient_noise(source)
         audio = recognizer.listen(source)
 
-    try:
-        st.write("Transcribing with Groq Whisper API...")
-        voice_text = transcribe_with_groq(audio)
-        st.write(f"🎙️ Recognized: {voice_text}")
+    audio_path = "temp_audio.wav"
+    with open(audio_path, "wb") as f:
+        f.write(audio.get_wav_data())
 
-        response = get_final_answer(voice_text)
+    st.write("🛠️ Transcribing with Groq Whisper API...")
+    transcription = transcribe_with_groq(audio_path)
+
+    if transcription and "Error" not in transcription:
+        st.write(f"🎙️ Recognized: {transcription}")
+        response = get_final_answer(transcription)
         st.success(response)
-    except Exception as e:
-        st.error(f"❌ Error in transcription: {e}")
+    else:
+        st.error(transcription)
