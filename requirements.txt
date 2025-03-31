@@ -6,5 +6,5 @@ groq
 python-dotenv
 vosk
 gTTS
- sounddevice
-
+sounddevice
+lxml-html-clean
