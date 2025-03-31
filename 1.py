@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from groq import Groq
 from googlesearch import search
 from newspaper import Article
+import time
 
 # Load API key
 API_KEY = "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"
